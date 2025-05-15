@@ -27,10 +27,10 @@ public class DBManager {
       String createStocks = "CREATE TABLE IF NOT EXISTS stocks ("
           + "date TEXT NOT NULL, "
           + "ticker TEXT NOT NULL, "
-          + "open REAL NOT NULL, "
+          + "close REAL NOT NULL, "
           + "high REAL NOT NULL, "
           + "low REAL NOT NULL, "
-          + "close REAL NOT NULL, "
+          + "open REAL NOT NULL, "
           + "volume INTEGER NOT NULL, "
           + "PRIMARY KEY (date, ticker)"
           + ");";
@@ -90,10 +90,10 @@ public class DBManager {
 
         pstmt.setString(1, date);
         pstmt.setString(2, ticker);
-        pstmt.setDouble(3, open);
+        pstmt.setDouble(3, close);
         pstmt.setDouble(4, high);
         pstmt.setDouble(5, low);
-        pstmt.setDouble(6, close);
+        pstmt.setDouble(6, open);
         pstmt.setLong(7, volume);
         pstmt.addBatch();
       }
