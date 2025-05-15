@@ -6,6 +6,7 @@
     "files.encoding": "utf8",
     "java.project.outputPath": "bin",
     "java.project.referencedLibraries": [
-        "lib/sqlite-jdbc-3.49.1.0.jar"
-    ]
+        "lib/sqlite-jdbc-3.49.1.0.jar",
+        "/home/oops/dev/tools/javafx-sdk-21.0.7/lib/**/*.jar"
+    ],
 }
