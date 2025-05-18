@@ -1,19 +1,17 @@
 package model;
 
-import java.sql.Connection;
-import java.sql.DriverManager;
-import java.sql.PreparedStatement;
-import java.sql.ResultSet;  
-import java.sql.SQLException;
-import java.sql.Statement;
-import java.sql.Types;
 import java.io.BufferedReader;
 import java.io.FileReader;
+import java.sql.*;
 import java.time.LocalDate;
-import java.util.*;
-
+import java.util.ArrayList;
+import java.util.List;
 
 public class DBManager {
+  private static final String URL = "jdbc:sqlite:data/stock.db";
+  private Connection conn;
+
+  // static 테이블 생성/CSV 삽입 메소드
   public static void createTables() {
     String url = "jdbc:sqlite:data/stock.db";
     try {
@@ -124,68 +122,166 @@ public class DBManager {
     }
   }
 
-  private Connection conn;
-  public void connect() throws SQLException {
-    conn = DriverManager.getConnection("jdbc:sqlite:data/stock.db");
-  }
-  public void initializeTransactions() throws SQLException{
-    try (Statement stmt = conn.createStatement()){
+  public void initializeTransactions() throws SQLException {
+    try (Statement stmt = conn.createStatement()) {
       stmt.executeUpdate("DROP TABLE IF EXISTS transactions");
       stmt.executeUpdate(
-        "CREATE TABLE transactions (" +
-        "id INTEGER PRIMARY KEY AUTOINCREMENT, " +
-        "date TEXT, ticker TEXT, type TEXT, " +
-        "price REAL, quantity INTEGER, total_value REAL, result REAL)"
-      );
+          "CREATE TABLE transactions (" +
+              "id INTEGER PRIMARY KEY AUTOINCREMENT, " +
+              "date TEXT, ticker TEXT, type TEXT, " +
+              "price REAL, quantity INTEGER, total_value REAL, result REAL)");
     }
   }
-  public List<LocalDate> getAvailableDates() throws SQLException {
-    List<LocalDate> dates = new ArrayList<>();
-    String sql = "SELECT DISTINCT date FROM stocks ORDER BY date";
-    try (Statement stmt = conn.createStatement();
-        ResultSet rs = stmt.executeQuery(sql)){
-          while (rs.next()) {
-            dates.add(LocalDate.parse(rs.getString("date")));
-          }
-        }
-        return dates;
+
+  /** 커넥션 열기 */
+  public void connect() throws SQLException {
+    conn = DriverManager.getConnection(URL);
   }
-  public Stock getStock(String ticker, LocalDate date) throws SQLException{
-    String sql = "SELECT * FROM stocks WHERE ticker = ? AND date = ?";
-    try (PreparedStatement ps = conn.prepareStatement(sql)){
+
+  /** 커넥션 닫기 (FR-19) */
+  public void disconnect() {
+    if (conn != null) {
+      try {
+        conn.close();
+      } catch (SQLException ignored) {
+      }
+    }
+  }
+
+  /** FR-01: 포트폴리오 테이블 초기화 */
+  public void initializePortfolio() throws SQLException {
+    try (Statement stmt = conn.createStatement()) {
+      stmt.executeUpdate("DELETE FROM portfolio");
+    }
+  }
+
+  /** FR-04: 거래 가능 날짜 조회 */
+  public List<LocalDate> loadAvailableDates() throws SQLException {
+    String sql = "SELECT DISTINCT date FROM stocks ORDER BY date";
+    try (Statement st = conn.createStatement();
+        ResultSet rs = st.executeQuery(sql)) {
+      List<LocalDate> dates = new ArrayList<>();
+      while (rs.next()) {
+        dates.add(LocalDate.parse(rs.getString("date")));
+      }
+      return dates;
+    }
+  }
+
+  /** FR-05: 날짜 유효성 검증 */
+  public boolean isDateValid(LocalDate date) throws SQLException {
+    String sql = "SELECT 1 FROM stocks WHERE date = ? LIMIT 1";
+    try (PreparedStatement ps = conn.prepareStatement(sql)) {
+      ps.setString(1, date.toString());
+      try (ResultSet rs = ps.executeQuery()) {
+        return rs.next();
+      }
+    }
+  }
+
+  /** FR-02: 시뮬레이션 상태 로드 */
+  public SimulationState loadSimulationState() throws SQLException {
+    // 1) 마지막 거래 날짜
+    LocalDate date;
+    String sqlDate = "SELECT MAX(date) FROM transactions";
+    try (PreparedStatement ps = conn.prepareStatement(sqlDate);
+        ResultSet rs = ps.executeQuery()) {
+      if (rs.next() && rs.getString(1) != null) {
+        date = LocalDate.parse(rs.getString(1));
+      } else {
+        // 기록 없으면 첫 가능 날짜
+        List<LocalDate> dates = loadAvailableDates();
+        date = dates.isEmpty() ? LocalDate.now() : dates.get(0);
+      }
+    }
+    // 2) 잔고 (예시: 5000 고정 혹은 별도 테이블에서 로드)
+    double balance = 5000.0;
+    // 3) 포트폴리오 보유
+    List<PortfolioEntry> holdings = new ArrayList<>();
+    String sqlPort = "SELECT ticker, quantity, avg_price FROM portfolio";
+    try (Statement st = conn.createStatement();
+        ResultSet rs = st.executeQuery(sqlPort)) {
+      while (rs.next()) {
+        holdings.add(new PortfolioEntry(
+            rs.getString("ticker"),
+            rs.getInt("quantity"),
+            rs.getDouble("avg_price")));
+      }
+    }
+    return new SimulationState(date, balance, holdings);
+  }
+
+  /** FR-15: 특정 날짜 단일 종가 조회 (기존 getStock) */
+  public Stock getStock(String ticker, LocalDate date) throws SQLException {
+    String sql = "SELECT open, high, low, close, volume FROM stocks WHERE ticker = ? AND date = ?";
+    try (PreparedStatement ps = conn.prepareStatement(sql)) {
       ps.setString(1, ticker);
       ps.setString(2, date.toString());
-      try (ResultSet rs = ps.executeQuery()){
+      try (ResultSet rs = ps.executeQuery()) {
         if (rs.next()) {
           return new Stock(
-            date,
-            ticker,
-            rs.getDouble("open"),
-            rs.getDouble("high"),
-            rs.getDouble("low"),
-            rs.getDouble("close"),
-            rs.getLong("volume")
-          );
+              date,
+              ticker,
+              rs.getDouble("open"),
+              rs.getDouble("high"),
+              rs.getDouble("low"),
+              rs.getDouble("close"),
+              rs.getLong("volume"));
         }
       }
     }
     return null;
   }
-  public void saveTransaction(Trade tx) throws SQLException {
-        String sql = "INSERT INTO transactions (date,ticker,type,price,quantity,total_value,result) VALUES (?,?,?,?,?,?,?)";
-        try (PreparedStatement ps = conn.prepareStatement(sql)) {
-            ps.setString(1, tx.getDate().toString());
-            ps.setString(2, tx.getTicker());
-            ps.setString(3, tx.getType());
-            ps.setDouble(4, tx.getPrice());
-            ps.setInt(5, tx.getQuantity());
-            ps.setDouble(6, tx.getTotalValue());
-            if (tx.getResult() != null) {
-                ps.setDouble(7, tx.getResult());
-            } else {
-                ps.setNull(7, Types.REAL);
-            }
-            ps.executeUpdate();
+
+  /** FR-15 확장: 히스토리 차트용 가격 범위 조회 */
+  public List<Stock> getHistoricalPrices(String ticker, LocalDate from, LocalDate to) throws SQLException {
+    String sql = """
+            SELECT date, open, high, low, close, volume
+              FROM stocks
+             WHERE ticker = ? AND date BETWEEN ? AND ?
+             ORDER BY date
+        """;
+    try (PreparedStatement ps = conn.prepareStatement(sql)) {
+      ps.setString(1, ticker);
+      ps.setString(2, from.toString());
+      ps.setString(3, to.toString());
+      try (ResultSet rs = ps.executeQuery()) {
+        List<Stock> list = new ArrayList<>();
+        while (rs.next()) {
+          list.add(new Stock(
+              LocalDate.parse(rs.getString("date")),
+              ticker,
+              rs.getDouble("open"),
+              rs.getDouble("high"),
+              rs.getDouble("low"),
+              rs.getDouble("close"),
+              rs.getLong("volume")));
         }
+        return list;
+      }
     }
+  }
+
+  /** FR-12: 거래 기록 저장 */
+  public void saveTransaction(Trade tx) throws SQLException {
+    String sql = """
+            INSERT INTO transactions
+              (date, ticker, type, price, quantity, total_value, result)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
+        """;
+    try (PreparedStatement ps = conn.prepareStatement(sql)) {
+      ps.setString(1, tx.getDate().toString());
+      ps.setString(2, tx.getTicker());
+      ps.setString(3, tx.getType());
+      ps.setDouble(4, tx.getPrice());
+      ps.setInt(5, tx.getQuantity());
+      ps.setDouble(6, tx.getTotalValue());
+      if (tx.getResult() != null)
+        ps.setDouble(7, tx.getResult());
+      else
+        ps.setNull(7, Types.REAL);
+      ps.executeUpdate();
+    }
+  }
+
 }

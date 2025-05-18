@@ -1,80 +1,204 @@
 package controller;
 
-import javafx.beans.property.ReadOnlyStringWrapper;
 import javafx.beans.property.ReadOnlyObjectWrapper;
-
-import javafx.collections.*;
+import javafx.beans.property.ReadOnlyStringWrapper;
+import javafx.collections.FXCollections;
+import javafx.collections.ObservableList;
 import javafx.fxml.FXML;
-import javafx.scene.chart.*;
+import javafx.scene.chart.LineChart;
+import javafx.scene.chart.XYChart;
 import javafx.scene.control.*;
 import model.*;
 
 import java.sql.SQLException;
 import java.time.LocalDate;
-import java.util.*;
+import java.util.List;
+
 public class TradeController {
-  @FXML private Button newSimButton, contSimButton, dateConfirmButton;
-  @FXML private DatePicker datePicker;
-  @FXML private ComboBox<String> tickerCombo, typeCombo;
-  @FXML private TextField priceField, quantityField;
-  @FXML private Button addTradeButton, executeButton;
-  @FXML private LineChart<String, Number> priceChart;
-  @FXML private TableView<PortfolioEntry> portfolioTable;
-  @FXML private TableColumn<PortfolioEntry, String> colTicker;
-  @FXML private TableColumn<PortfolioEntry, Integer> colQty;
-  @FXML private TableColumn<PortfolioEntry, Double> colAvg, colCurr, colPL, colPLpct;
+    // FXML UI components
+    @FXML private Button newSimButton;
+    @FXML private Button contSimButton;
+    @FXML private Button dateConfirmButton;
+    @FXML private DatePicker datePicker;
 
-  private DBManager db;
-  private TradeProcessor proc;
-  private List<Trade> pending = new ArrayList<>();
-  public void initialize() {
-    try {
-        db = new DBManager(); db.connect();
-        proc = new TradeProcessor(db);
+    @FXML private ComboBox<String> tickerCombo;
+    @FXML private ComboBox<String> typeCombo;
+    @FXML private TextField priceField;
+    @FXML private TextField quantityField;
+    @FXML private Button addTradeButton;
+    @FXML private Button removeTradeButton;
+    @FXML private Button executeButton;
 
-        tickerCombo.getItems().addAll("TQQQ", "UPRO", "SOXL");
-        typeCombo.getItems().addAll("Buy", "Sell", "Skip");
+    @FXML private TableView<Trade> pendingTradesTable;
+    @FXML private TableColumn<Trade, String> colPendingTicker;
+    @FXML private TableColumn<Trade, String> colPendingType;
+    @FXML private TableColumn<Trade, Double> colPendingPrice;
+    @FXML private TableColumn<Trade, Integer> colPendingQty;
 
-        colTicker.setCellValueFactory(c -> new ReadOnlyStringWrapper(c.getValue().getTicker()));
-        colQty.setCellValueFactory(c -> new ReadOnlyObjectWrapper<>(c.getValue().getQuantity()));
-        colAvg.setCellValueFactory(c -> new ReadOnlyObjectWrapper<>(c.getValue().getAvgPrice()));
-        colCurr.setCellValueFactory(c -> new ReadOnlyObjectWrapper<>(c.getValue().getCurrentPrice()));
-        colPL.setCellValueFactory(c -> new ReadOnlyObjectWrapper<>(c.getValue().getProfitLoss()));
-        colPLpct.setCellValueFactory(c -> new ReadOnlyObjectWrapper<>(c.getValue().getProfitRate()));
+    
+    @FXML private LineChart<String, Number> priceChart;
 
-        portfolioTable.setItems(FXCollections.observableArrayList());
-    } catch (Exception e) { e.printStackTrace(); }
-  }
-  @FXML private void handleNewSimulation(){
-    LocalDate date = datePicker.getValue();
-    try { proc.startNewSimulation(date); updateViews(); } catch (Exception e) { e.printStackTrace();}
-  }
-  @FXML private void handleAddTrade() {
-    String tkr = tickerCombo.getValue();
-    String type = typeCombo.getValue();
-    double price = Double.parseDouble(priceField.getText());
-    int qty = Integer.parseInt(quantityField.getText());
-    pending.add(new Trade(tkr, type, price, qty));
-  }
-  @FXML private void handleExecuteTrades() {
-    try {
-        proc.processTrades(pending);
-        pending.clear();
-        updateViews();
-    } catch (Exception e) { e.printStackTrace();}
-  }
-  private void updateViews() {
+    @FXML private TableView<PortfolioEntry> portfolioTable;
+    @FXML private TableColumn<PortfolioEntry, String> colTicker;
+    @FXML private TableColumn<PortfolioEntry, Integer> colQty;
+    @FXML private TableColumn<PortfolioEntry, Double> colAvg;
+    @FXML private TableColumn<PortfolioEntry, Double> colCurr;
+    @FXML private TableColumn<PortfolioEntry, Double> colPL;
+    @FXML private TableColumn<PortfolioEntry, Double> colPLpct;
+
+    // Internal state
+    private DBManager db;
+    private TradeProcessor proc;
+    private ObservableList<Trade> pendingTrades = FXCollections.observableArrayList();
+
+    public void initialize() {
+        try {
+            // DB & processor
+            db = new DBManager();
+            db.connect();
+            proc = new TradeProcessor(db);
+
+            // DatePicker: restrict to valid dates
+            List<LocalDate> validDates = db.loadAvailableDates();
+            datePicker.setDayCellFactory(picker -> new DateCell() {
+                @Override public void updateItem(LocalDate date, boolean empty) {
+                    super.updateItem(date, empty);
+                    setDisable(empty || !validDates.contains(date));
+                }
+            });
+
+            // ComboBoxes
+            tickerCombo.getItems().setAll("TQQQ", "UPRO", "SOXL");
+            tickerCombo.getSelectionModel().selectFirst();
+            typeCombo.getItems().setAll("Buy", "Sell", "Skip");
+            typeCombo.getSelectionModel().selectFirst();
+
+            // Pending trades table
+            colPendingTicker.setCellValueFactory(c -> new ReadOnlyStringWrapper(c.getValue().getTicker()));
+            colPendingType.setCellValueFactory(c -> new ReadOnlyStringWrapper(c.getValue().getType()));
+            colPendingPrice.setCellValueFactory(c -> new ReadOnlyObjectWrapper<>(c.getValue().getPrice()));
+            colPendingQty.setCellValueFactory(c -> new ReadOnlyObjectWrapper<>(c.getValue().getQuantity()));
+            pendingTradesTable.setItems(pendingTrades);
+
+            // Portfolio table
+            colTicker.setCellValueFactory(c -> new ReadOnlyStringWrapper(c.getValue().getTicker()));
+            colQty.setCellValueFactory(c -> new ReadOnlyObjectWrapper<>(c.getValue().getQuantity()));
+            colAvg.setCellValueFactory(c -> new ReadOnlyObjectWrapper<>(c.getValue().getAvgPrice()));
+            colCurr.setCellValueFactory(c -> new ReadOnlyObjectWrapper<>(c.getValue().getCurrentPrice()));
+            colPL.setCellValueFactory(c -> new ReadOnlyObjectWrapper<>(c.getValue().getProfitLoss()));
+            colPLpct.setCellValueFactory(c -> new ReadOnlyObjectWrapper<>(c.getValue().getProfitRate()));
+            portfolioTable.setItems(FXCollections.observableArrayList());
+
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
+    @FXML private void handleNewSimulation() {
+        LocalDate date = datePicker.getValue();
+        handleDateConfirm(date, true);
+    }
+
+    @FXML private void handleContinueSimulation() {
+        try {
+            SimulationState state = db.loadSimulationState();
+            proc.restoreState(state);
+            updateAllViews();
+        } catch (SQLException e) {
+            showAlert("Error loading simulation state", e.getMessage());
+        }
+    }
+
+    @FXML private void handleDateConfirm() {
+        handleDateConfirm(datePicker.getValue(), false);
+    }
+
+    private void handleDateConfirm(LocalDate date, boolean forceNew) {
+        try {
+            if (!db.isDateValid(date)) {
+                showAlert("Invalid Date", "Selected date has no stock data. Please choose another.");
+                return;
+            }
+            if (forceNew) proc.startNewSimulation(date);
+            else proc.setCurrentDate(date);
+            pendingTrades.clear();
+            updateAllViews();
+        } catch (SQLException e) {
+            showAlert("Database Error", e.getMessage());
+        }
+    }
+
+    @FXML private void handleAddTrade() {
+        try {
+            String tkr = tickerCombo.getValue();
+            String type = typeCombo.getValue();
+            double price = Double.parseDouble(priceField.getText());
+            int qty = Integer.parseInt(quantityField.getText());
+            Trade t = new Trade(tkr, type, price, qty);
+            pendingTrades.add(t);
+            updatePendingTradesTable();
+        } catch (NumberFormatException e) {
+            showAlert("Input Error", "Price and Quantity must be numeric.");
+        }
+    }
+
+    @FXML private void handleRemoveTrade() {
+        int idx = pendingTradesTable.getSelectionModel().getSelectedIndex();
+        if (idx >= 0) {
+            pendingTrades.remove(idx);
+            updatePendingTradesTable();
+        }
+    }
+
+    @FXML private void handleExecuteTrades() {
+        try {
+            proc.processTrades(pendingTrades);
+            pendingTrades.clear();
+            updateAllViews();
+        } catch (Exception e) {
+            showAlert("Execution Error", e.getMessage());
+        }
+    }
+
+    // View updates
+    private void updateAllViews() {
+        updatePriceChart();
+        updatePortfolioTable();
+        updatePendingTradesTable();
+    }
+
+    private void updatePriceChart() {
         priceChart.getData().clear();
         XYChart.Series<String, Number> series = new XYChart.Series<>();
         try {
-            Stock s = db.getStock(tickerCombo.getValue(), proc.getCurrentDate());
-            series.getData().add(new XYChart.Data<>(proc.getCurrentDate().toString(), s.getClose()));
+            List<Stock> history = db.getHistoricalPrices(
+                tickerCombo.getValue(), proc.getCurrentDate().minusDays(30), proc.getCurrentDate());
+            for (Stock s : history) {
+                series.getData().add(
+                    new XYChart.Data<>(s.getDate().toString(), s.getClose()));
+            }
         } catch (SQLException e) {
-            e.printStackTrace();
+            showAlert("Chart Error", e.getMessage());
         }
         priceChart.getData().add(series);
+    }
 
-        ObservableList<PortfolioEntry> list = FXCollections.observableArrayList(proc.getPortfolio());
-        portfolioTable.setItems(list);
+    private void updatePortfolioTable() {
+        ObservableList<PortfolioEntry> list =
+            FXCollections.observableArrayList(proc.getPortfolio());
+        portfolioTable.setItems(list);    
+    }
+
+    private void updatePendingTradesTable() {
+        pendingTradesTable.setItems(FXCollections.observableArrayList(pendingTrades));
+    }
+
+    // Utility
+    private void showAlert(String title, String message) {
+        Alert alert = new Alert(Alert.AlertType.WARNING);
+        alert.setTitle(title);
+        alert.setHeaderText(null);
+        alert.setContentText(message);
+        alert.showAndWait();
     }
 }

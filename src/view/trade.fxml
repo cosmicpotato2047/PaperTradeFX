@@ -1,8 +1,10 @@
 <?xml version="1.0" encoding="UTF-8"?>
+
 <?import javafx.scene.layout.*?>
 <?import javafx.scene.control.*?>
 <?import javafx.scene.chart.*?>
 <?import javafx.geometry.Insets?>
+
 <BorderPane xmlns="http://javafx.com/javafx" xmlns:fx="http://javafx.com/fxml"
             fx:controller="controller.TradeController">
   <top>
@@ -10,10 +12,11 @@
       <padding>
         <Insets top="10" right="10" bottom="10" left="10"/>
       </padding>
-      <DatePicker fx:id="datePicker" />
+      <DatePicker fx:id="datePicker"/>
       <Button fx:id="newSimButton" text="New Simulation" onAction="#handleNewSimulation"/>
     </HBox>
   </top>
+
   <left>
     <LineChart fx:id="priceChart" title="Price Chart">
       <xAxis>
@@ -24,6 +27,7 @@
       </yAxis>
     </LineChart>
   </left>
+
   <center>
     <VBox spacing="10">
       <padding>
@@ -36,9 +40,18 @@
         <TextField fx:id="quantityField" promptText="Qty"/>
         <Button fx:id="addTradeButton" text="Add Trade" onAction="#handleAddTrade"/>
       </HBox>
+      <TableView fx:id="pendingTradesTable" prefHeight="150">
+        <columns>
+          <TableColumn fx:id="colPendingTicker" text="Ticker"/>
+          <TableColumn fx:id="colPendingType" text="Type"/>
+          <TableColumn fx:id="colPendingPrice" text="Price"/>
+          <TableColumn fx:id="colPendingQty" text="Qty"/>
+        </columns>
+      </TableView>
       <Button fx:id="executeButton" text="Execute Trades" onAction="#handleExecuteTrades"/>
     </VBox>
   </center>
+
   <right>
     <VBox spacing="10">
       <padding>
