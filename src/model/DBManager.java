@@ -272,7 +272,7 @@ public class DBManager {
     try (PreparedStatement ps = conn.prepareStatement(sql)) {
       ps.setString(1, tx.getDate().toString());
       ps.setString(2, tx.getTicker());
-      ps.setString(3, tx.getType());
+      ps.setString(3, tx.getType().toString());
       ps.setDouble(4, tx.getPrice());
       ps.setInt(5, tx.getQuantity());
       ps.setDouble(6, tx.getTotalValue());
