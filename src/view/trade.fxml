@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<?import javafx.scene.layout.*?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.chart.*?>
+<?import javafx.geometry.Insets?>
+<BorderPane xmlns="http://javafx.com/javafx" xmlns:fx="http://javafx.com/fxml"
+            fx:controller="controller.TradeController">
+  <top>
+    <HBox spacing="10">
+      <padding>
+        <Insets top="10" right="10" bottom="10" left="10"/>
+      </padding>
+      <DatePicker fx:id="datePicker" />
+      <Button fx:id="newSimButton" text="New Simulation" onAction="#handleNewSimulation"/>
+    </HBox>
+  </top>
+  <left>
+    <LineChart fx:id="priceChart" title="Price Chart">
+      <xAxis>
+        <CategoryAxis label="Date"/>
+      </xAxis>
+      <yAxis>
+        <NumberAxis label="Price"/>
+      </yAxis>
+    </LineChart>
+  </left>
+  <center>
+    <VBox spacing="10">
+      <padding>
+        <Insets top="10" right="10" bottom="10" left="10"/>
+      </padding>
+      <HBox spacing="5">
+        <ComboBox fx:id="tickerCombo" promptText="Ticker"/>
+        <ComboBox fx:id="typeCombo" promptText="Type"/>
+        <TextField fx:id="priceField" promptText="Price"/>
+        <TextField fx:id="quantityField" promptText="Qty"/>
+        <Button fx:id="addTradeButton" text="Add Trade" onAction="#handleAddTrade"/>
+      </HBox>
+      <Button fx:id="executeButton" text="Execute Trades" onAction="#handleExecuteTrades"/>
+    </VBox>
+  </center>
+  <right>
+    <VBox spacing="10">
+      <padding>
+        <Insets top="10" right="10" bottom="10" left="10"/>
+      </padding>
+      <Label text="Portfolio"/>
+      <TableView fx:id="portfolioTable">
+        <columns>
+          <TableColumn fx:id="colTicker" text="Ticker"/>
+          <TableColumn fx:id="colQty" text="Qty"/>
+          <TableColumn fx:id="colAvg" text="Avg Price"/>
+          <TableColumn fx:id="colCurr" text="Current Price"/>
+          <TableColumn fx:id="colPL" text="P/L"/>
+          <TableColumn fx:id="colPLpct" text="P/L %"/>
+        </columns>
+      </TableView>
+    </VBox>
+  </right>
+</BorderPane>

@@ -1,68 +1,80 @@
 package controller;
 
+import javafx.beans.property.ReadOnlyStringWrapper;
+import javafx.beans.property.ReadOnlyObjectWrapper;
+
+import javafx.collections.*;
 import javafx.fxml.FXML;
+import javafx.scene.chart.*;
 import javafx.scene.control.*;
-import javafx.scene.chart.LineChart;
-import javafx.collections.FXCollections;
-import javafx.collections.ObservableList;
-import model.Trade;
-import model.TradeProcessor;
-import model.PortfolioEntry;
+import model.*;
 
+import java.sql.SQLException;
+import java.time.LocalDate;
+import java.util.*;
 public class TradeController {
+  @FXML private Button newSimButton, contSimButton, dateConfirmButton;
+  @FXML private DatePicker datePicker;
+  @FXML private ComboBox<String> tickerCombo, typeCombo;
+  @FXML private TextField priceField, quantityField;
+  @FXML private Button addTradeButton, executeButton;
+  @FXML private LineChart<String, Number> priceChart;
+  @FXML private TableView<PortfolioEntry> portfolioTable;
+  @FXML private TableColumn<PortfolioEntry, String> colTicker;
+  @FXML private TableColumn<PortfolioEntry, Integer> colQty;
+  @FXML private TableColumn<PortfolioEntry, Double> colAvg, colCurr, colPL, colPLpct;
 
-    // UI component와 연결될 변수들
-    @FXML private ComboBox<String> tickerComboBox;
-    @FXML private TextField priceField;
-    @FXML private TextField quantityField;
-    @FXML private ComboBox<String> typeComboBox; // "Buy", "Sell"
-    @FXML private Button addTradeButton;
-    @FXML private Button executeButton;
-    @FXML private TableView<Trade> tradeListTable;
-    @FXML private TableView<PortfolioEntry> portfolioTable;
-    @FXML private LineChart<String, Number> priceChart;
+  private DBManager db;
+  private TradeProcessor proc;
+  private List<Trade> pending = new ArrayList<>();
+  public void initialize() {
+    try {
+        db = new DBManager(); db.connect();
+        proc = new TradeProcessor(db);
 
-    private ObservableList<Trade> tradeList = FXCollections.observableArrayList();
+        tickerCombo.getItems().addAll("TQQQ", "UPRO", "SOXL");
+        typeCombo.getItems().addAll("Buy", "Sell", "Skip");
 
-    @FXML
-    public void initialize(){
-        // 초기 설정: 티커 목록, 거래 타입 세팅
-        tickerComboBox.getItems().addAll("TQQQ", "UPRO", "SOXL");
-        typeComboBox.getItems().addAll("Buy", "Sell");
+        colTicker.setCellValueFactory(c -> new ReadOnlyStringWrapper(c.getValue().getTicker()));
+        colQty.setCellValueFactory(c -> new ReadOnlyObjectWrapper<>(c.getValue().getQuantity()));
+        colAvg.setCellValueFactory(c -> new ReadOnlyObjectWrapper<>(c.getValue().getAvgPrice()));
+        colCurr.setCellValueFactory(c -> new ReadOnlyObjectWrapper<>(c.getValue().getCurrentPrice()));
+        colPL.setCellValueFactory(c -> new ReadOnlyObjectWrapper<>(c.getValue().getProfitLoss()));
+        colPLpct.setCellValueFactory(c -> new ReadOnlyObjectWrapper<>(c.getValue().getProfitRate()));
 
-        tradeListTable.setItems(tradeList);
-        // 포트폴리오 테이블 설정은 이후에
-    }
+        portfolioTable.setItems(FXCollections.observableArrayList());
+    } catch (Exception e) { e.printStackTrace(); }
+  }
+  @FXML private void handleNewSimulation(){
+    LocalDate date = datePicker.getValue();
+    try { proc.startNewSimulation(date); updateViews(); } catch (Exception e) { e.printStackTrace();}
+  }
+  @FXML private void handleAddTrade() {
+    String tkr = tickerCombo.getValue();
+    String type = typeCombo.getValue();
+    double price = Double.parseDouble(priceField.getText());
+    int qty = Integer.parseInt(quantityField.getText());
+    pending.add(new Trade(tkr, type, price, qty));
+  }
+  @FXML private void handleExecuteTrades() {
+    try {
+        proc.processTrades(pending);
+        pending.clear();
+        updateViews();
+    } catch (Exception e) { e.printStackTrace();}
+  }
+  private void updateViews() {
+        priceChart.getData().clear();
+        XYChart.Series<String, Number> series = new XYChart.Series<>();
+        try {
+            Stock s = db.getStock(tickerCombo.getValue(), proc.getCurrentDate());
+            series.getData().add(new XYChart.Data<>(proc.getCurrentDate().toString(), s.getClose()));
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        priceChart.getData().add(series);
 
-    @FXML
-    public void handleAddTrade() {
-        String ticker = tickerComboBox.getValue();
-        String type = typeComboBox.getValue();
-        double price = Double.parseDouble(priceField.getText());
-        int quantity = Integer.parseInt(quantityField.getText());
-
-        Trade trade = new Trade(ticker, type, price, quantity);
-        tradeList.add(trade);
-    }
-
-    @FXML
-    
-    public void handleExecuteTrades() {
-        // 모든 거래 실행
-        TradeProcessor.executeTrades(tradeList);
-
-        tradeList.clear(); // 오늘 거래 초기화
-
-        // 포트폴리오, 차트 등 갱신 필요
-        updatePortfolioTable();
-        updatePriceChart();
-    }
-
-    private void updatePortfolioTable() {
-        // 포트폴리오 상태를 UI에 반영
-    }
-
-    private void updatePriceChart() {
-        // 차트 갱신
+        ObservableList<PortfolioEntry> list = FXCollections.observableArrayList(proc.getPortfolio());
+        portfolioTable.setItems(list);
     }
 }

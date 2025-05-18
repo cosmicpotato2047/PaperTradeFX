@@ -1,7 +1,13 @@
 {
-  "type": "java",
-  "name": "Launch App",
-  "request": "launch",
-  "mainClass": "app.App", // 너의 main class
-  "vmArgs": "--module-path /home/opps/dev/tools/javafx-sdk-21.0.7/lib --add-modules javafx.controls,javafx.fxml"
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "type": "java",
+      "name": "Launch App",
+      "request": "launch",
+      "mainClass": "app.App",
+      "projectName": "PaperTradeFX_d6ac8dec",
+      "vmArgs": "--module-path /home/oops/dev/tools/javafx-sdk-21.0.7/lib --add-modules javafx.controls,javafx.fxml"
+    }
+  ]
 }

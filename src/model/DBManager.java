@@ -6,8 +6,12 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;  
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.sql.Types;
 import java.io.BufferedReader;
 import java.io.FileReader;
+import java.time.LocalDate;
+import java.util.*;
+
 
 public class DBManager {
   public static void createTables() {
@@ -120,4 +124,68 @@ public class DBManager {
     }
   }
 
+  private Connection conn;
+  public void connect() throws SQLException {
+    conn = DriverManager.getConnection("jdbc:sqlite:data/stock.db");
+  }
+  public void initializeTransactions() throws SQLException{
+    try (Statement stmt = conn.createStatement()){
+      stmt.executeUpdate("DROP TABLE IF EXISTS transactions");
+      stmt.executeUpdate(
+        "CREATE TABLE transactions (" +
+        "id INTEGER PRIMARY KEY AUTOINCREMENT, " +
+        "date TEXT, ticker TEXT, type TEXT, " +
+        "price REAL, quantity INTEGER, total_value REAL, result REAL)"
+      );
+    }
+  }
+  public List<LocalDate> getAvailableDates() throws SQLException {
+    List<LocalDate> dates = new ArrayList<>();
+    String sql = "SELECT DISTINCT date FROM stocks ORDER BY date";
+    try (Statement stmt = conn.createStatement();
+        ResultSet rs = stmt.executeQuery(sql)){
+          while (rs.next()) {
+            dates.add(LocalDate.parse(rs.getString("date")));
+          }
+        }
+        return dates;
+  }
+  public Stock getStock(String ticker, LocalDate date) throws SQLException{
+    String sql = "SELECT * FROM stocks WHERE ticker = ? AND date = ?";
+    try (PreparedStatement ps = conn.prepareStatement(sql)){
+      ps.setString(1, ticker);
+      ps.setString(2, date.toString());
+      try (ResultSet rs = ps.executeQuery()){
+        if (rs.next()) {
+          return new Stock(
+            date,
+            ticker,
+            rs.getDouble("open"),
+            rs.getDouble("high"),
+            rs.getDouble("low"),
+            rs.getDouble("close"),
+            rs.getLong("volume")
+          );
+        }
+      }
+    }
+    return null;
+  }
+  public void saveTransaction(Trade tx) throws SQLException {
+        String sql = "INSERT INTO transactions (date,ticker,type,price,quantity,total_value,result) VALUES (?,?,?,?,?,?,?)";
+        try (PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setString(1, tx.getDate().toString());
+            ps.setString(2, tx.getTicker());
+            ps.setString(3, tx.getType());
+            ps.setDouble(4, tx.getPrice());
+            ps.setInt(5, tx.getQuantity());
+            ps.setDouble(6, tx.getTotalValue());
+            if (tx.getResult() != null) {
+                ps.setDouble(7, tx.getResult());
+            } else {
+                ps.setNull(7, Types.REAL);
+            }
+            ps.executeUpdate();
+        }
+    }
 }
