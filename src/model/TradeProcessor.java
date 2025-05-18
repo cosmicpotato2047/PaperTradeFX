@@ -4,6 +4,7 @@ package model;
 import java.sql.SQLException;
 import java.time.LocalDate;
 import java.util.*;
+import model.DBManager;
 
 public class TradeProcessor {
     private final DBManager db;
@@ -13,6 +14,7 @@ public class TradeProcessor {
 
     public TradeProcessor(DBManager db) {
         this.db = db;
+        this.currentDate = LocalDate.now();
     }
 
     /** FR-01: 새 거래 시작 */
@@ -37,6 +39,22 @@ public class TradeProcessor {
     /** FR-06: 날짜만 변경 */
     public void setCurrentDate(LocalDate date) {
         this.currentDate = date;
+    }
+
+    public void continueSimulation() throws SQLException{
+        // 1) DB에서 마지막 거래일과 포트폴리오, 잔고 로드
+        SimulationState state = db.loadSimulationState();
+
+        // 2) 포트폴리오, 잔고 복원
+        this.balance = state.getBalance();
+        portfolio.clear();
+        for (PortfolioEntry e : state.getHoldings()) {
+            portfolio.put(e.getTicker(), e);
+        }
+
+        // 3) 날짜는 마지막 거래일 +1일
+        LocalDate lasDate = state.getDate();
+        this.currentDate = lasDate.plusDays(1);
     }
 
     /** FR-11~14: 주문 처리 및 다음 날짜 이동 */
@@ -97,5 +115,15 @@ public class TradeProcessor {
     /** FR-17: 포트폴리오 조회 */
     public Collection<PortfolioEntry> getPortfolio() {
         return portfolio.values();
+    }
+
+    public LocalDate advanceToNextDate(LocalDate currentDate) {
+        try {
+            return db.getNextDate(currentDate);
+        } catch (SQLException e) {
+            // DB 에러 시 로깅 혹은 사용자 알림으로 처리
+            e.printStackTrace();
+            return null;
+        }
     }
 }

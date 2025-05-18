@@ -6,6 +6,7 @@ import java.sql.*;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
+import java.time.LocalDate;
 
 public class DBManager {
   private static final String URL = "jdbc:sqlite:data/stock.db";
@@ -284,4 +285,52 @@ public class DBManager {
     }
   }
 
+  public LocalDate getNextDate(LocalDate currentDate) throws SQLException {
+    String sql = """
+            SELECT date
+              FROM stocks
+             WHERE date > ?
+             ORDER BY date ASC
+             LIMIT 1
+        """;
+    try (PreparedStatement ps = conn.prepareStatement(sql)) {
+      ps.setString(1, currentDate.toString());
+      try (ResultSet rs = ps.executeQuery()) {
+        if (rs.next()) {
+          return LocalDate.parse(rs.getString("date"));
+        }
+      }
+    }
+    return null;
+  }
+
+  /** 거래 기록이 하나라도 있는지 체크 */
+  public boolean hasTransactions() throws SQLException {
+    String sql = "SELECT COUNT(*) FROM transactions";
+    try (Statement st = conn.createStatement();
+        ResultSet rs = st.executeQuery(sql)) {
+      rs.next();
+      return rs.getInt(1) > 0;
+    }
+  }
+
+  /** 마지막(최신) 거래일을 반환, 없으면 null */
+  public LocalDate getLastTransactionDate() throws SQLException {
+    String sql = "SELECT MAX(date) FROM transactions";
+    try (Statement st = conn.createStatement();
+        ResultSet rs = st.executeQuery(sql)) {
+      if (rs.next()) {
+        String d = rs.getString(1);
+        return (d != null) ? LocalDate.parse(d) : null;
+      }
+    }
+    return null;
+  }
+
+  /** 트랜잭션 테이블 초기화 */
+  public void resetTransactions() throws SQLException {
+    try (Statement st = conn.createStatement()) {
+      st.execute("DELETE FROM transactions");
+    }
+  }
 }

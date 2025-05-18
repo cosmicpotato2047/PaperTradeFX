@@ -13,6 +13,7 @@ import model.*;
 import java.sql.SQLException;
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Optional;
 
 public class TradeController {
     // FXML UI components
@@ -76,10 +77,40 @@ public class TradeController {
 
     public void initialize() {
         try {
-            // DB & processor
+            // [1] DB & processor
             db = new DBManager();
             db.connect();
             proc = new TradeProcessor(db);
+
+            // [2] 과거 거래가 있으면 "이어하기" 묻기
+            if (db.hasTransactions()) {
+                Alert alert = new Alert(Alert.AlertType.CONFIRMATION);
+                alert.setTitle("Contine Simulation?");
+                alert.setHeaderText("이전 시뮬레이션 기록이 발견되었습니다.");
+                alert.setContentText("이어서 진행하시겠습니까?");
+                ButtonType YES = new ButtonType("예", ButtonBar.ButtonData.YES);
+                ButtonType NO = new ButtonType("아니오", ButtonBar.ButtonData.NO);
+                alert.getButtonTypes().setAll(YES, NO);
+
+                Optional<ButtonType> res = alert.showAndWait();
+                if (res.isPresent() && res.get() == YES) {
+                    // 이어하기
+                    proc.continueSimulation();
+                    datePicker.setValue(proc.getCurrentDate());
+                    // 나머지 컨트롤 바인딩으로 넘어감
+                } else {
+                    // 새 시뮬레이션: 날짜 선택 버튼만 보이도록 종료
+                    newSimButton.setVisible(true);
+                    return;
+                }
+            } else {
+                // 기록 없으면 바로 새 시뮬레이션 버튼 보이기
+                newSimButton.setVisible(true);
+                return;
+            }
+
+            // [3] 여기까지 왔으면 "이어하기"로 넘어온 상황
+            newSimButton.setVisible(false);
 
             // DatePicker: restrict to valid dates
             List<LocalDate> validDates = db.loadAvailableDates();
@@ -115,13 +146,39 @@ public class TradeController {
 
         } catch (Exception e) {
             e.printStackTrace();
+            showAlert("Initialization Error", e.getMessage());
         }
     }
 
     @FXML
     private void handleNewSimulation() {
-        LocalDate date = datePicker.getValue();
-        handleDateConfirm(date, true);
+        LocalDate chosen = datePicker.getValue();
+        // 1) 날짜 유효성 검사
+        try {
+            if (!db.isDateValid(chosen)) {
+                showAlert("Invalid Date", "선택된 날짜에 데이터가 없습니다.");
+                return;
+            }
+        } catch (SQLException e) {
+            showAlert("Database Error", "날짜 검증 중 오류가 발생했습니다.");
+            return;
+        }
+
+        // 2) 시뮬레이션 초기화
+        try {
+            proc.startNewSimulation(chosen);
+        } catch (Exception e) {
+            showAlert("Initialization Error", e.getMessage());
+            return;
+        }
+
+        // 3) 화면 요소 초기화 및 바인딩
+        pendingTrades.clear();
+        newSimButton.setVisible(false);
+        datePicker.setValue(chosen);
+        updateAllViews(); // 모든 뷰(테이블, 차트 등) 갱신
+
+        // (필요하면) 콤보박스 초기화, 테이블 컬럼 바인딩 등 추가 호출
     }
 
     @FXML
@@ -190,33 +247,34 @@ public class TradeController {
     }
 
     @FXML
-private void handleExecuteTrades() {
-    // ① 현재 시뮬레이션 날짜 가져오기
-    LocalDate currentDate = datePicker.getValue();
-    if (currentDate == null) {
-        showAlert("Execution Error", "Please select a simulation date.");
-        return;
-    }
+    private void handleExecuteTrades() {
+        // ① 현재 시뮬레이션 날짜 가져오기
+        LocalDate currentDate = datePicker.getValue();
+        if (currentDate == null) {
+            showAlert("Execution Error", "Please select a simulation date.");
+            return;
+        }
 
-    // ② pendingTrades 각각에 현재 날짜 주입 후 처리
+        // ② pendingTrades 각각에 현재 날짜 주입 후 처리
         pendingTrades.forEach(t -> t.setDate(currentDate));
 
-    // ③ 처리 끝난 리스트 초기화
-    pendingTrades.clear();
-    updatePendingTradesTable();
+        // ③ 처리 끝난 리스트 초기화
+        pendingTrades.clear();
+        updatePendingTradesTable();
 
-    // ④ 포트폴리오·가격 차트 갱신
-    updatePortfolioTable();
-    updatePriceChart();
+        // ④ 포트폴리오·가격 차트 갱신
+        updatePortfolioTable();
+        updatePriceChart();
 
-    // ⑤ 다음 거래일로 날짜 이동
-    // LocalDate nextDate = proc.advanceToNextDate(currentDate);
-    // if (nextDate != null) {
-    //     datePicker.setValue(nextDate);
-    // } else {
-    //     showAlert("Data Exhausted", "No more trading dates. Please refresh data.");
-    // }
-}
+        // ⑤ 다음 거래일로 날짜 이동
+        LocalDate nextDate = proc.advanceToNextDate(currentDate);
+        System.out.println("[DEBUG] currentDate=" + currentDate + " nextDate=" + nextDate);
+        if (nextDate != null) {
+            datePicker.setValue(nextDate);
+        } else {
+            showAlert("Data Exhausted", "No more trading dates. Please refresh data.");
+        }
+    }
 
     // View updates
     private void updateAllViews() {
