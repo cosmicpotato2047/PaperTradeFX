@@ -1,5 +1,6 @@
 package controller;
 
+import javafx.application.Platform;
 import javafx.beans.property.ReadOnlyObjectWrapper;
 import javafx.beans.property.ReadOnlyStringWrapper;
 import javafx.collections.FXCollections;
@@ -8,6 +9,7 @@ import javafx.fxml.FXML;
 import javafx.scene.chart.LineChart;
 import javafx.scene.chart.XYChart;
 import javafx.scene.control.*;
+import javafx.scene.layout.VBox;
 import model.*;
 
 import java.sql.SQLException;
@@ -76,78 +78,132 @@ public class TradeController {
     private ObservableList<Trade> pendingTrades = FXCollections.observableArrayList();
 
     public void initialize() {
+
+        setupUIBindings();
+
         try {
-            // [1] DB & processor
             db = new DBManager();
             db.connect();
             proc = new TradeProcessor(db);
-
-            // [2] 과거 거래가 있으면 "이어하기" 묻기
+        Platform.runLater(() -> {
+            try{
             if (db.hasTransactions()) {
-                Alert alert = new Alert(Alert.AlertType.CONFIRMATION);
-                alert.setTitle("Contine Simulation?");
-                alert.setHeaderText("이전 시뮬레이션 기록이 발견되었습니다.");
-                alert.setContentText("이어서 진행하시겠습니까?");
-                ButtonType YES = new ButtonType("예", ButtonBar.ButtonData.YES);
-                ButtonType NO = new ButtonType("아니오", ButtonBar.ButtonData.NO);
-                alert.getButtonTypes().setAll(YES, NO);
-
-                Optional<ButtonType> res = alert.showAndWait();
-                if (res.isPresent() && res.get() == YES) {
-                    // 이어하기
+                // 이전 기록이 있으면 이어하기 vs 새 시작 경고창
+                Alert a = new Alert(Alert.AlertType.CONFIRMATION,
+                        "이전 거래내역이 있습니다.\n이어 진행하시겠습니까?", ButtonType.YES, ButtonType.NO);
+                a.setHeaderText("시뮬레이션 계속");
+                Optional<ButtonType> choice = a.showAndWait();
+                if (choice.orElse(ButtonType.NO) == ButtonType.YES) {
                     proc.continueSimulation();
-                    datePicker.setValue(proc.getCurrentDate());
-                    // 나머지 컨트롤 바인딩으로 넘어감
+                    applyDate(proc.getCurrentDate());
                 } else {
-                    // 새 시뮬레이션: 날짜 선택 버튼만 보이도록 종료
-                    newSimButton.setVisible(true);
-                    return;
+                    // 새 사이클 팝업
+                    showDateDialog();
                 }
             } else {
-                // 기록 없으면 바로 새 시뮬레이션 버튼 보이기
-                newSimButton.setVisible(true);
+                // 완전 처음 실행
+                showDateDialog();
+            }}catch (SQLException ex){
+                ex.printStackTrace();
+                showAlert("Database Error", ex.getMessage());
+            }
+        });
+
+            // newSimButton 은 팝업 대신 다시 새 사이클 시작할 때만 사용
+            newSimButton.setOnAction(e -> showDateDialog());
+
+        } catch (Exception ex) {
+            ex.printStackTrace();
+            showAlert("Initialization Error", ex.getMessage());
+            Platform.exit();
+        }
+    }
+
+    /** 팝업 다이얼로그로 날짜를 고르게 하고, 선택된 날짜로 시뮬레이션 시작 */
+    private void showDateDialog() {
+        final List<LocalDate> valid;
+        try {
+            valid = db.loadAvailableDates();
+        } catch (SQLException e) {
+            showAlert("Database Error", "날짜 목록을 불러오는 중 오류가 발생했습니다:\n" + e.getMessage());
+            return;
+        }
+        Dialog<LocalDate> dlg = new Dialog<>();
+        dlg.setTitle("시뮬레이션 시작 날짜 선택");
+        dlg.setHeaderText("거래를 시작할 날짜를 선택하세요");
+
+        DatePicker dp = new DatePicker(LocalDate.now());
+        // 유효 날짜만 선택 가능하도록 제한
+        dp.setDayCellFactory(picker -> new DateCell() {
+            @Override
+            public void updateItem(LocalDate date, boolean empty) {
+                super.updateItem(date, empty);
+                setDisable(empty || !valid.contains(date));
+            }
+        });
+
+        dlg.getDialogPane().setContent(new VBox(dp));
+        dlg.getDialogPane().getButtonTypes().addAll(ButtonType.OK, ButtonType.CANCEL);
+        dlg.setResultConverter(btn -> btn == ButtonType.OK ? dp.getValue() : null);
+
+        Optional<LocalDate> res = dlg.showAndWait();
+        if (res.isPresent()) {
+            LocalDate chosen = res.get();
+            try {
+                proc.startNewSimulation(chosen);
+            } catch (Exception ex) {
+                showAlert("Error", ex.getMessage());
                 return;
             }
-
-            // [3] 여기까지 왔으면 "이어하기"로 넘어온 상황
-            newSimButton.setVisible(false);
-
-            // DatePicker: restrict to valid dates
-            List<LocalDate> validDates = db.loadAvailableDates();
-            datePicker.setDayCellFactory(picker -> new DateCell() {
-                @Override
-                public void updateItem(LocalDate date, boolean empty) {
-                    super.updateItem(date, empty);
-                    setDisable(empty || !validDates.contains(date));
-                }
-            });
-
-            // ComboBoxes
-            tickerCombo.getItems().setAll("TQQQ", "UPRO", "SOXL");
-            tickerCombo.getSelectionModel().selectFirst();
-            typeCombo.getItems().setAll("Buy", "Sell", "Skip");
-            typeCombo.getSelectionModel().selectFirst();
-
-            // Pending trades table
-            colPendingTicker.setCellValueFactory(c -> new ReadOnlyStringWrapper(c.getValue().getTicker()));
-            colPendingType.setCellValueFactory(c -> new ReadOnlyStringWrapper(c.getValue().getType().toString()));
-            colPendingPrice.setCellValueFactory(c -> new ReadOnlyObjectWrapper<>(c.getValue().getPrice()));
-            colPendingQty.setCellValueFactory(c -> new ReadOnlyObjectWrapper<>(c.getValue().getQuantity()));
-            pendingTradesTable.setItems(pendingTrades);
-
-            // Portfolio table
-            colTicker.setCellValueFactory(c -> new ReadOnlyStringWrapper(c.getValue().getTicker()));
-            colQty.setCellValueFactory(c -> new ReadOnlyObjectWrapper<>(c.getValue().getQuantity()));
-            colAvg.setCellValueFactory(c -> new ReadOnlyObjectWrapper<>(c.getValue().getAvgPrice()));
-            colCurr.setCellValueFactory(c -> new ReadOnlyObjectWrapper<>(c.getValue().getCurrentPrice()));
-            colPL.setCellValueFactory(c -> new ReadOnlyObjectWrapper<>(c.getValue().getProfitLoss()));
-            colPLpct.setCellValueFactory(c -> new ReadOnlyObjectWrapper<>(c.getValue().getProfitRate()));
-            portfolioTable.setItems(FXCollections.observableArrayList());
-
-        } catch (Exception e) {
-            e.printStackTrace();
-            showAlert("Initialization Error", e.getMessage());
+            applyDate(chosen);
+        } else {
+            // 취소하면 앱 종료
+            Platform.exit();
         }
+    }
+
+    /** datePicker에 날짜 설정하고, 읽기 전용(disabled)로 막기 */
+    private void applyDate(LocalDate date) {
+        datePicker.setValue(date);
+        datePicker.setDisable(true);
+        newSimButton.setDisable(false); // 새 시뮬 버튼은 활성
+        updateAllViews();
+    }
+
+    private void setupUIBindings() {
+        // ComboBoxes
+        tickerCombo.getItems().setAll("TQQQ", "UPRO", "SOXL");
+        tickerCombo.getSelectionModel().selectFirst();
+        typeCombo.getItems().setAll("Buy", "Sell", "Skip");
+        typeCombo.getSelectionModel().selectFirst();
+
+        // Pending trades table
+        colPendingTicker.setCellValueFactory(c -> new ReadOnlyStringWrapper(c.getValue().getTicker()));
+        colPendingType.setCellValueFactory(c -> new ReadOnlyStringWrapper(c.getValue().getType().toString()));
+        colPendingPrice.setCellValueFactory(c -> new ReadOnlyObjectWrapper<>(c.getValue().getPrice()));
+        colPendingQty.setCellValueFactory(c -> new ReadOnlyObjectWrapper<>(c.getValue().getQuantity()));
+        pendingTradesTable.setItems(pendingTrades);
+
+        // Portfolio table
+        colTicker.setCellValueFactory(c -> new ReadOnlyStringWrapper(c.getValue().getTicker()));
+        colQty.setCellValueFactory(c -> new ReadOnlyObjectWrapper<>(c.getValue().getQuantity()));
+        colAvg.setCellValueFactory(c -> new ReadOnlyObjectWrapper<>(c.getValue().getAvgPrice()));
+        colCurr.setCellValueFactory(c -> new ReadOnlyObjectWrapper<>(c.getValue().getCurrentPrice()));
+        colPL.setCellValueFactory(c -> new ReadOnlyObjectWrapper<>(c.getValue().getProfitLoss()));
+        colPLpct.setCellValueFactory(c -> new ReadOnlyObjectWrapper<>(c.getValue().getProfitRate()));
+        portfolioTable.setItems(FXCollections.observableArrayList());
+    }
+
+    private void updateAllViews() {
+        updatePendingTradesTable();
+        // updatePortfolioTable(proc.getHoldingsList());
+        // updatePriceChart(db.loadStocks(datePicker.getValue(), tickerCombo.getValue()));
+    }
+
+    private void showAlert(String title, String msg) {
+        Alert a = new Alert(Alert.AlertType.ERROR, msg, ButtonType.OK);
+        a.setTitle(title);
+        a.showAndWait();
     }
 
     @FXML
@@ -276,13 +332,6 @@ public class TradeController {
         }
     }
 
-    // View updates
-    private void updateAllViews() {
-        updatePriceChart();
-        updatePortfolioTable();
-        updatePendingTradesTable();
-    }
-
     private void updatePriceChart() {
         priceChart.getData().clear();
         XYChart.Series<String, Number> series = new XYChart.Series<>();
@@ -308,12 +357,4 @@ public class TradeController {
         pendingTradesTable.setItems(FXCollections.observableArrayList(pendingTrades));
     }
 
-    // Utility
-    private void showAlert(String title, String message) {
-        Alert alert = new Alert(Alert.AlertType.WARNING);
-        alert.setTitle(title);
-        alert.setHeaderText(null);
-        alert.setContentText(message);
-        alert.showAndWait();
-    }
 }

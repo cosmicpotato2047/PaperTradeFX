@@ -58,6 +58,7 @@
         <Insets top="10" right="10" bottom="10" left="10"/>
       </padding>
       <Label text="Portfolio"/>
+      
       <TableView fx:id="portfolioTable">
         <columns>
           <TableColumn fx:id="colTicker" text="Ticker"/>
