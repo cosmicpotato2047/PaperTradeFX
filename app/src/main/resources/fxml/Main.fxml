@@ -1,89 +1,124 @@
-<!-- File: resources/fxml/Main.fxml -->
 <?xml version="1.0" encoding="UTF-8"?>
-<?import javafx.geometry.*?>
-<?import javafx.scene.chart.*?>
-<?import javafx.scene.control.*?>
-<?import javafx.scene.layout.*?>
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.chart.CategoryAxis?>
+<?import javafx.scene.chart.LineChart?>
+<?import javafx.scene.chart.NumberAxis?>
+<?import javafx.scene.chart.PieChart?>
+<?import javafx.scene.control.Button?>
+<?import javafx.scene.control.ChoiceBox?>
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.control.ListView?>
+<?import javafx.scene.control.Tab?>
+<?import javafx.scene.control.TabPane?>
+<?import javafx.scene.control.TableColumn?>
+<?import javafx.scene.control.TableView?>
+<?import javafx.scene.control.ToggleButton?>
+<?import javafx.scene.control.ToolBar?>
+<?import javafx.scene.control.TextField?>
+<?import javafx.scene.layout.BorderPane?>
+<?import javafx.scene.layout.HBox?>
+<?import javafx.scene.layout.VBox?>
 
 <BorderPane xmlns="http://javafx.com/javafx/24"
             xmlns:fx="http://javafx.com/fxml/1"
-            fx:controller="com.papertradefx.controller.MainController">
-  <top>
-    <VBox spacing="5" padding="10">
-      <HBox spacing="10" alignment="CENTER_LEFT">
-        <Label fx:id="dateLabel" text="Date: YYYY-MM-DD (Day 1)"/>
-        <ToggleButton fx:id="tqqqToggleButton" text="TQQQ"/>
-        <ToggleButton fx:id="uproToggleButton" text="UPRO"/>
-        <ToggleButton fx:id="soxlToggleButton" text="SOXL"/>
-      </HBox>
-      <LineChart fx:id="priceLineChart" title="Price Chart" prefHeight="200">
-        <xAxis>
-          <CategoryAxis label="Date"/>
-        </xAxis>
-        <yAxis>
-          <NumberAxis label="Price"/>
-        </yAxis>
-      </LineChart>
-    </VBox>
-  </top>
+            fx:id="rootPane"
+            fx:controller="controller.MainController"
+            prefWidth="1200" prefHeight="800">
 
-  <center>
-    <VBox spacing="10" padding="10">
-      <!-- 주문 입력 -->
-      <HBox spacing="8" alignment="CENTER_LEFT">
-        <Label text="Type:"/>
-        <ChoiceBox fx:id="tradeTypeChoiceBox"/>
-        <Label text="Ticker:"/>
-        <ChoiceBox fx:id="tickerChoiceBox"/>
-        <Label text="Price:"/>
-        <TextField fx:id="priceTextField" prefWidth="80"/>
-        <Label text="Qty:"/>
-        <TextField fx:id="quantityTextField" prefWidth="80"/>
-        <Button fx:id="addOrderButton" text="Add Order"/>
-        <Button fx:id="executeTradesButton" text="Execute Trades"/>
-        <Label fx:id="cashLabel" text="Cash: $0.00"/>
-      </HBox>
+    <!-- Top toolbar with Help button -->
+    <top>
+        <ToolBar fx:id="toolBar">
+            <Button text="Help" fx:id="helpButton" onAction="#handleHelpDialog"/>
+        </ToolBar>
+    </top>
 
-      <!-- 주문 대기열 테이블 -->
-      <TableView fx:id="orderTableView" prefHeight="150">
-        <columns>
-          <TableColumn fx:id="tradeTypeColumn" text="Type"/>
-          <TableColumn fx:id="tickerColumn" text="Ticker"/>
-          <TableColumn fx:id="priceColumn" text="Price"/>
-          <TableColumn fx:id="quantityColumn" text="Quantity"/>
-          <TableColumn fx:id="actionColumn" text="Action"/>
-        </columns>
-      </TableView>
+    <!-- Left: date, toggles, price chart -->
+    <left>
+        <VBox fx:id="leftPane" spacing="10">
+            <padding>
+                <Insets top="10" right="10" bottom="10" left="10"/>
+            </padding>
+            <children>
+                <Label text="Date:" fx:id="dateLabel"/>
+                <HBox fx:id="toggleBox" spacing="5">
+                    <ToggleButton text="TQQQ" fx:id="tqqqToggleButton"/>
+                    <ToggleButton text="UPRO" fx:id="uproToggleButton"/>
+                    <ToggleButton text="SOXL" fx:id="soxlToggleButton"/>
+                </HBox>
+                <LineChart fx:id="priceLineChart" prefHeight="300">
+                    <xAxis><CategoryAxis/></xAxis>
+                    <yAxis><NumberAxis/></yAxis>
+                </LineChart>
+            </children>
+        </VBox>
+    </left>
 
-      <!-- 계좌 현황 테이블 -->
-      <TableView fx:id="accountStatusTableView" prefHeight="150">
-        <columns>
-          <TableColumn text="Ticker"/>
-          <TableColumn text="Qty"/>
-          <TableColumn text="Avg Price"/>
-          <TableColumn text="Current Price"/>
-          <TableColumn text="P/L"/>
-          <TableColumn text="P/L %"/>
-        </columns>
-      </TableView>
+    <!-- Center: cash, trade input, order table, execute button -->
+    <center>
+        <VBox fx:id="centerPane" spacing="10">
+            <padding>
+                <Insets top="10" right="10" bottom="10" left="10"/>
+            </padding>
+            <children>
+                <Label text="Cash:" fx:id="cashLabel"/>
+                <HBox fx:id="tradeInputBox" spacing="5">
+                    <ChoiceBox fx:id="tradeTypeChoiceBox"/>
+                    <ChoiceBox fx:id="tickerChoiceBox"/>
+                    <TextField fx:id="priceTextField" promptText="Price"/>
+                    <TextField fx:id="quantityTextField" promptText="Quantity"/>
+                    <Button text="Add Order" fx:id="addOrderButton" onAction="#handleAddOrder"/>
+                </HBox>
+                <TableView fx:id="orderTableView" prefHeight="200">
+                    <columns>
+                        <TableColumn text="Type"     fx:id="tradeTypeColumn"/>
+                        <TableColumn text="Ticker"   fx:id="tickerColumn"/>
+                        <TableColumn text="Price"    fx:id="priceColumn"/>
+                        <TableColumn text="Quantity" fx:id="quantityColumn"/>
+                        <TableColumn text="Action"   fx:id="actionColumn"/>
+                    </columns>
+                </TableView>
+                <Button text="Execute Trades" fx:id="executeTradesButton" onAction="#handleExecuteTrades"/>
+            </children>
+        </VBox>
+    </center>
 
-      <!-- 차트 영역 -->
-      <HBox spacing="10">
-        <PieChart fx:id="cashVsInvestedPieChart" prefWidth="200" prefHeight="150"/>
-        <PieChart fx:id="holdingProportionPieChart" prefWidth="200" prefHeight="150"/>
-        <LineChart fx:id="profitLossLineChart" title="P/L over Time" prefWidth="200" prefHeight="150">
-          <xAxis>
-            <CategoryAxis label="Day"/>
-          </xAxis>
-          <yAxis>
-            <NumberAxis label="P/L"/>
-          </yAxis>
-        </LineChart>
-      </HBox>
-
-      <!-- 거래 히스토리 -->
-      <Label text="History"/>
-      <ListView fx:id="historyListView" prefHeight="100"/>
-    </VBox>
-  </center>
+    <!-- Right: account status + tabs -->
+    <right>
+        <VBox fx:id="rightPane" spacing="10">
+            <padding>
+                <Insets top="10" right="10" bottom="10" left="10"/>
+            </padding>
+            <children>
+                <TableView fx:id="accountStatusTableView" prefHeight="150"/>
+                <TabPane fx:id="mainTabPane" prefHeight="400">
+                    <tabs>
+                        <Tab text="Portfolio" fx:id="portfolioTab">
+                            <content>
+                                <VBox fx:id="portfolioPane" spacing="10">
+                                    <padding>
+                                        <Insets top="10" right="10" bottom="10" left="10"/>
+                                    </padding>
+                                    <children>
+                                        <HBox fx:id="portfolioPieContainer" spacing="10">
+                                            <PieChart fx:id="cashVsInvestedPieChart" prefWidth="150" prefHeight="150"/>
+                                            <PieChart fx:id="holdingProportionPieChart" prefWidth="150" prefHeight="150"/>
+                                        </HBox>
+                                        <LineChart fx:id="profitLossLineChart" prefHeight="200">
+                                            <xAxis><CategoryAxis/></xAxis>
+                                            <yAxis><NumberAxis/></yAxis>
+                                        </LineChart>
+                                    </children>
+                                </VBox>
+                            </content>
+                        </Tab>
+                        <Tab text="History" fx:id="historyTab">
+                            <content>
+                                <ListView fx:id="historyListView" prefHeight="200"/>
+                            </content>
+                        </Tab>
+                    </tabs>
+                </TabPane>
+            </children>
+        </VBox>
+    </right>
 </BorderPane>

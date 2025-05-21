@@ -18,4 +18,8 @@ public class SimulationContext {
     public static LocalDate getStartDate() {
         return startDate;
     }
+
+    public static void advanceDate() {
+        startDate = startDate.plusDays(1);
+    }
 }

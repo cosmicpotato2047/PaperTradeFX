@@ -108,6 +108,8 @@ public class DBManager {
         try (BufferedReader br = new BufferedReader(new FileReader(filePath))) {
             String line;
             br.readLine(); // header
+            br.readLine(); // header
+            br.readLine(); // header
             while ((line = br.readLine()) != null) {
                 String[] tokens = line.split(",", -1);
                 if (tokens.length < 6) continue;
