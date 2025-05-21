@@ -1,0 +1,89 @@
+<!-- File: resources/fxml/Main.fxml -->
+<?xml version="1.0" encoding="UTF-8"?>
+<?import javafx.geometry.*?>
+<?import javafx.scene.chart.*?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+
+<BorderPane xmlns="http://javafx.com/javafx/24"
+            xmlns:fx="http://javafx.com/fxml/1"
+            fx:controller="com.papertradefx.controller.MainController">
+  <top>
+    <VBox spacing="5" padding="10">
+      <HBox spacing="10" alignment="CENTER_LEFT">
+        <Label fx:id="dateLabel" text="Date: YYYY-MM-DD (Day 1)"/>
+        <ToggleButton fx:id="tqqqToggleButton" text="TQQQ"/>
+        <ToggleButton fx:id="uproToggleButton" text="UPRO"/>
+        <ToggleButton fx:id="soxlToggleButton" text="SOXL"/>
+      </HBox>
+      <LineChart fx:id="priceLineChart" title="Price Chart" prefHeight="200">
+        <xAxis>
+          <CategoryAxis label="Date"/>
+        </xAxis>
+        <yAxis>
+          <NumberAxis label="Price"/>
+        </yAxis>
+      </LineChart>
+    </VBox>
+  </top>
+
+  <center>
+    <VBox spacing="10" padding="10">
+      <!-- 주문 입력 -->
+      <HBox spacing="8" alignment="CENTER_LEFT">
+        <Label text="Type:"/>
+        <ChoiceBox fx:id="tradeTypeChoiceBox"/>
+        <Label text="Ticker:"/>
+        <ChoiceBox fx:id="tickerChoiceBox"/>
+        <Label text="Price:"/>
+        <TextField fx:id="priceTextField" prefWidth="80"/>
+        <Label text="Qty:"/>
+        <TextField fx:id="quantityTextField" prefWidth="80"/>
+        <Button fx:id="addOrderButton" text="Add Order"/>
+        <Button fx:id="executeTradesButton" text="Execute Trades"/>
+        <Label fx:id="cashLabel" text="Cash: $0.00"/>
+      </HBox>
+
+      <!-- 주문 대기열 테이블 -->
+      <TableView fx:id="orderTableView" prefHeight="150">
+        <columns>
+          <TableColumn fx:id="tradeTypeColumn" text="Type"/>
+          <TableColumn fx:id="tickerColumn" text="Ticker"/>
+          <TableColumn fx:id="priceColumn" text="Price"/>
+          <TableColumn fx:id="quantityColumn" text="Quantity"/>
+          <TableColumn fx:id="actionColumn" text="Action"/>
+        </columns>
+      </TableView>
+
+      <!-- 계좌 현황 테이블 -->
+      <TableView fx:id="accountStatusTableView" prefHeight="150">
+        <columns>
+          <TableColumn text="Ticker"/>
+          <TableColumn text="Qty"/>
+          <TableColumn text="Avg Price"/>
+          <TableColumn text="Current Price"/>
+          <TableColumn text="P/L"/>
+          <TableColumn text="P/L %"/>
+        </columns>
+      </TableView>
+
+      <!-- 차트 영역 -->
+      <HBox spacing="10">
+        <PieChart fx:id="cashVsInvestedPieChart" prefWidth="200" prefHeight="150"/>
+        <PieChart fx:id="holdingProportionPieChart" prefWidth="200" prefHeight="150"/>
+        <LineChart fx:id="profitLossLineChart" title="P/L over Time" prefWidth="200" prefHeight="150">
+          <xAxis>
+            <CategoryAxis label="Day"/>
+          </xAxis>
+          <yAxis>
+            <NumberAxis label="P/L"/>
+          </yAxis>
+        </LineChart>
+      </HBox>
+
+      <!-- 거래 히스토리 -->
+      <Label text="History"/>
+      <ListView fx:id="historyListView" prefHeight="100"/>
+    </VBox>
+  </center>
+</BorderPane>

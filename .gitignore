@@ -1,1 +1,40 @@
-/bin/
+# Gradle
+.gradle/
+build/
+
+# Eclipse/VS Code/IDE 설정
+.vscode/
+.idea/
+*.iml
+
+# 컴파일 결과물
+bin/
+out/
+*.class
+
+# 로그, 리포트, 임시 파일
+*.log
+reports/
+**/reports/
+
+# OS별 메타파일
+.DS_Store
+Thumbs.db
+
+# 사용자별 설정
+*.swp
+*.swo
+*~
+
+# 자바 패키징
+*.jar
+*.war
+*.ear
+
+# 라이브러리 폴더 (javafx-sdk처럼 직접 두는 바이너리)
+lib/javafx-sdk-*/
+app/libs/
+
+# IntelliJ
+*.ipr
+*.iws

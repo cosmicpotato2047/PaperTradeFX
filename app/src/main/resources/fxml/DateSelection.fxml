@@ -1,0 +1,16 @@
+<!-- File: resources/fxml/DateSelection.fxml -->
+<?xml version="1.0" encoding="UTF-8"?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+
+<BorderPane xmlns="http://javafx.com/javafx/24"
+            xmlns:fx="http://javafx.com/fxml/1"
+            fx:controller="com.papertradefx.controller.DateSelectionController">
+    <center>
+        <VBox alignment="CENTER" spacing="10.0" padding="20">
+            <Label text="시작 날짜를 선택하세요" />
+            <ComboBox fx:id="dateComboBox" prefWidth="200"/>
+            <Button fx:id="okButton" text="확인" />
+        </VBox>
+    </center>
+</BorderPane>
