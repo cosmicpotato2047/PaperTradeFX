@@ -1,0 +1,130 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.chart.LineChart?>
+<?import javafx.scene.chart.NumberAxis?>
+<?import javafx.scene.chart.CategoryAxis?>
+<?import javafx.scene.chart.PieChart?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.control.cell.PropertyValueFactory?>
+<?import javafx.scene.layout.*?>
+
+<BorderPane fx:id="rootPane"
+  xmlns:fx="http://javafx.com/fxml/1"
+  fx:controller="src.MainController">
+  <!-- Top ToolBar -->
+  <top>
+    <ToolBar fx:id="toolBar">
+      <Button fx:id="helpButton"
+        text="info"
+        onAction="#onHelp">
+        <tooltip>
+          <Tooltip text="View Simulator Help" />
+        </tooltip>
+      </Button>
+    </ToolBar>
+  </top>
+
+  <!-- Left Pane: Date, Toggle, Price Chart -->
+  <left>
+    <VBox fx:id="leftPane" spacing="10">
+      <padding>
+        <Insets top="10" right="10" bottom="10" left="10" />
+      </padding>
+      <Label fx:id="dateLabel" text="Date" />
+      <HBox fx:id="toggleBox" spacing="5">
+        <ToggleButton fx:id="tqqqToggleButton" text="TQQQ" />
+        <ToggleButton fx:id="uproToggleButton" text="UPRO" />
+        <ToggleButton fx:id="soxlToggleButton" text="SOXL" />
+      </HBox>
+      <LineChart fx:id="priceLineChart" title="Price Over Time">
+        <xAxis>
+          <CategoryAxis />
+        </xAxis>
+        <yAxis>
+          <NumberAxis />
+        </yAxis>
+      </LineChart>
+    </VBox>
+  </left>
+
+  <!-- Center + Right Combined: HBox for shrink priority -->
+  <center>
+    <HBox spacing="10">
+      <padding>
+        <Insets top="10" right="10" bottom="10" left="10" />
+      </padding>
+      <!-- Center Pane: Order Input and Table -->
+      <VBox fx:id="centerPane" spacing="10" HBox.hgrow="SOMETIMES">
+        <Label fx:id="cashLabel" text="Cash" />
+        <HBox fx:id="tradeInputBox" spacing="5">
+          <ChoiceBox fx:id="tradeTypeChoiceBox" />
+          <ChoiceBox fx:id="tickerChoiceBox" />
+          <TextField fx:id="priceTextField" promptText="Price" />
+          <TextField fx:id="quantityTextField" promptText="Quantity" />
+          <Button fx:id="addOrderButton" text="Add Order" onAction="#onAddOrder" />
+        </HBox>
+        <TableView fx:id="orderTableView" VBox.vgrow="ALWAYS">
+          <columns>
+            <TableColumn fx:id="tradeTypeColumn" text="Type" />
+            <TableColumn fx:id="tickerColumn" text="Ticker" />
+            <TableColumn fx:id="priceColumn" text="Price" />
+            <TableColumn fx:id="quantityColumn" text="Quantity" />
+            <TableColumn fx:id="actionColumn" text="Action" />
+          </columns>
+        </TableView>
+        <Button fx:id="executeTradesButton" text="Execute Trades" onAction="#onExecuteTrades" />
+      </VBox>
+
+      <!-- Right Pane: Account Status and Tabs -->
+      <VBox fx:id="rightPane" spacing="10" HBox.hgrow="ALWAYS">
+        <TableView fx:id="accountStatusTableView" prefHeight="120" maxHeight="120"
+          VBox.vgrow="NEVER">
+          <columns>
+            <TableColumn fx:id="tickerColumnStatus" text="Ticker">
+              <cellValueFactory>
+                <PropertyValueFactory property="ticker" />
+              </cellValueFactory>
+            </TableColumn>
+            <TableColumn fx:id="quantityColumnStatus" text="Quantity">
+              <cellValueFactory>
+                <PropertyValueFactory property="quantity" />
+              </cellValueFactory>
+            </TableColumn>
+            <TableColumn fx:id="avgPriceColumnStatus" text="Avg Price">
+              <cellValueFactory>
+                <PropertyValueFactory property="avgPrice" />
+              </cellValueFactory>
+            </TableColumn>
+            <TableColumn fx:id="detailsColumnStatus" text="Details" />
+          </columns>
+        </TableView>
+        <TabPane fx:id="mainTabPane" prefHeight="200" VBox.vgrow="ALWAYS">
+          <tabs>
+            <Tab fx:id="portfolioTab" text="Portfolio">
+              <VBox fx:id="portfolioPane" spacing="10">
+                <padding>
+                  <Insets top="10" right="10" bottom="10" left="10" />
+                </padding>
+                <HBox fx:id="portfolioPieContainer" spacing="10">
+                  <PieChart fx:id="cashVsInvestedPieChart" title="Cash vs Invested" />
+                  <PieChart fx:id="holdingProportionPieChart" title="Holding %" />
+                </HBox>
+                <LineChart fx:id="profitLossLineChart" title="P/L Over Time">
+                  <xAxis>
+                    <CategoryAxis />
+                  </xAxis>
+                  <yAxis>
+                    <NumberAxis />
+                  </yAxis>
+                </LineChart>
+              </VBox>
+            </Tab>
+            <Tab fx:id="historyTab" text="History">
+              <ListView fx:id="historyListView" VBox.vgrow="ALWAYS" />
+            </Tab>
+          </tabs>
+        </TabPane>
+      </VBox>
+    </HBox>
+  </center>
+</BorderPane>
