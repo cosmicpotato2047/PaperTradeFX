@@ -1,1 +1,33 @@
-/bin/
+
+# Java compiled files
+*.class
+*.jar
+*.exe
+*.log
+
+# Java-specific build artifacts
+out/
+bin/
+build/
+*.iml
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+
+# Python virtual environment (if any)
+.venv/
+venv/
+
+# OS-specific files
+.DS_Store
+Thumbs.db
+
+# Distribution / package output
+dist/
+*.zip
+
+# Misc
+*.log
+*.tmp

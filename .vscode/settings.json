@@ -1,7 +1,8 @@
+
+// .vscode/settings.json
 {
-    "java.project.sourcePaths": ["src"],
-    "java.project.outputPath": "bin",
-    "java.project.referencedLibraries": [
-        "lib/**/*.jar"
-    ]
+  "java.project.referencedLibraries": [
+    "lib/javafx-sdk-21.0.7/lib/*.jar"
+  ],
+  "java.debug.settings.autoCreateLaunchConfiguration": false
 }
